@@ -3,21 +3,24 @@ package xyz.wagyourtail.manifold
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.initialization.Settings
+import org.gradle.api.plugins.PluginAware
 import org.gradle.api.tasks.compile.JavaCompile
+import xyz.wagyourtail.commons.core.logger.SimpleLogger
 import xyz.wagyourtail.commons.core.logger.prefix.LoggingPrefix
 import xyz.wagyourtail.commons.gradle.GradleLogWrapper
 import xyz.wagyourtail.commonskt.properties.FinalizeOnRead
 import xyz.wagyourtail.manifold.plugin.ManifoldExtension
+import xyz.wagyourtail.manifold.plugin.manifold
+import xyz.wagyourtail.manifold.settings.ManifoldSettingsExtension
 import kotlin.jvm.java
 
-val pluginVersion by FinalizeOnRead(GradlePlugin::class.java.`package`.implementationVersion ?: "unknown")
-
-class GradlePlugin : Plugin<Project> {
+class GradlePlugin : Plugin<PluginAware> {
 
     companion object {
         fun JavaCompile.addManifoldArgs() {
-            if ("-Xplugin:Manifold" !in options.compilerArgs) {
-                options.compilerArgs.add("-Xplugin:Manifold")
+            if (options.compilerArgs.none { "-Xplugin:Manifold" in it }) {
+                options.compilerArgs.add("-Xplugin:Manifold ${project.manifold.pluginArgs.get().joinToString(" ")}")
 
                 val javaVersion = options.release.orNull?.let { JavaVersion.toVersion(it) }
                     ?: javaCompiler.orNull?.metadata?.jvmVersion?.let { JavaVersion.toVersion(it) }
@@ -28,15 +31,26 @@ class GradlePlugin : Plugin<Project> {
                 }
             }
         }
-    }
 
-    override fun apply(project: Project) {
-        val logger = GradleLogWrapper(LoggingPrefix.builder()
+        private val logPrefix = LoggingPrefix.builder()
             .loggerName("Manifold")
             .includeThreadName(false)
-            .build(),
-            project.logger
-        )
+            .includeTime(false)
+            .build()
+
+        val pluginVersion by FinalizeOnRead(GradlePlugin::class.java.`package`.implementationVersion ?: "unknown")
+    }
+
+    override fun apply(target: PluginAware) {
+        when (target) {
+            is Project -> apply(target)
+            is Settings -> apply(target)
+            else -> throw IllegalArgumentException("Unsupported target type: ${target::class.java}")
+        }
+    }
+
+    fun apply(project: Project) {
+        val logger = GradleLogWrapper(logPrefix, project.logger)
 
         logger.lifecycle("Loaded Manifold Plugin $pluginVersion")
 
@@ -48,6 +62,24 @@ class GradlePlugin : Plugin<Project> {
             }
         }
 
+        project.repositories.exclusiveContent {
+            it.forRepository {
+                project.repositories.mavenCentral { r ->
+                    r.name = "Central (Manifold)"
+                }
+            }
+
+            it.filter { r ->
+                r.includeGroupAndSubgroups("systems.manifold")
+            }
+        }
+    }
+
+    fun apply(settings: Settings) {
+        val logger = SimpleLogger.builder().prefix(logPrefix).build()
+
+        logger.lifecycle("Loaded Manifold Settings Plugin $pluginVersion")
+        settings.extensions.create("manifold", ManifoldSettingsExtension::class.java, settings)
     }
 
 }

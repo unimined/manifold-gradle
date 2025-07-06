@@ -35,12 +35,6 @@ gradlePlugin {
             implementationClass = "xyz.wagyourtail.manifold.GradlePlugin"
             version = project.version as String
         }
-        create("simpleSettingsPlugin") {
-            id = "xyz.wagyourtail.manifold-settings"
-            description = project.description
-            implementationClass = "xyz.wagyourtail.manifold.GradleSettings"
-            version = project.version as String
-        }
     }
 }
 

@@ -3,6 +3,7 @@ package xyz.wagyourtail.manifold.plugin
 import groovy.lang.Closure
 import groovy.lang.DelegatesTo
 import org.gradle.api.Project
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import javax.inject.Inject
 
@@ -16,12 +17,16 @@ abstract class ManifoldExtension @Inject constructor(val project: Project) {
 
     abstract val version: Property<String>
 
+    abstract val pluginArgs: ListProperty<String>
+
     init {
         val parentVersion = project.parent?.manifoldMaybe?.version
         if (parentVersion != null) {
             version.convention(parentVersion)
         }
         version.finalizeValueOnRead()
+
+        pluginArgs.finalizeValueOnRead()
 
         project.afterEvaluate {
             if (subprojectPreprocessorInitialized) {
