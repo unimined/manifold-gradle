@@ -1,6 +1,5 @@
 package xyz.wagyourtail.manifold
 
-import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
@@ -22,14 +21,6 @@ class GradlePlugin : Plugin<PluginAware> {
         fun JavaCompile.addManifoldArgs() {
             if (options.compilerArgs.none { "-Xplugin:Manifold" in it }) {
                 options.compilerArgs.add("-Xplugin:Manifold ${project.manifold.pluginArgs.get().joinToString(" ")}")
-
-                val javaVersion = options.release.orNull?.let { JavaVersion.toVersion(it) }
-                    ?: javaCompiler.orNull?.metadata?.jvmVersion?.let { JavaVersion.toVersion(it) }
-                    ?: JavaVersion.current()
-
-                if (javaVersion > JavaVersion.VERSION_1_8 && inputs.files.any { it.name == "module-info.java" }) {
-                    options.compilerArgs.addAll(listOf("--module-path", classpath.asPath))
-                }
             }
         }
 
